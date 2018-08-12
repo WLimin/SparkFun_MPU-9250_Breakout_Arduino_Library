@@ -8,11 +8,8 @@
 #ifndef _MPU9250_H_
 #define _MPU9250_H_
 
-#include <SPI.h>
-#include <Wire.h>
-
 #define SERIAL_DEBUG true
-
+#include <stdint.h>
 // See also MPU-9250 Register Map and Descriptions, Revision 4.0,
 // RM-MPU-9250A-00, Rev. 1.4, 9/9/2013 for registers not listed in above
 // document; the MPU9250 and MPU9150 are virtually identical but the latter has
@@ -168,29 +165,24 @@
 #define ZA_OFFSET_H        0x7D
 #define ZA_OFFSET_L        0x7E
 
-// Using the MPU-9250 breakout board, ADO is set to 0
-// Seven-bit device address is 110100 for ADO = 0 and 110101 for ADO = 1
-// The previous preprocessor directives were sensitive to the location that the user defined AD1
-// Now simply define MPU9250_ADDRESS as one of the two following depending on your application
+//// Using the MPU-9250 breakout board, ADO is set to 0
+//// Seven-bit device address is 110100 for ADO = 0 and 110101 for ADO = 1
+//// The previous preprocessor directives were sensitive to the location that the user defined AD1
+//// Now simply define MPU9250_ADDRESS as one of the two following depending on your application
 #define MPU9250_ADDRESS_AD1 0x69  // Device address when ADO = 1
 #define MPU9250_ADDRESS_AD0 0x68  // Device address when ADO = 0
 #define AK8963_ADDRESS  0x0C   // Address of magnetometer
 
-
 #define READ_FLAG 0x80
-#define NOT_SPI -1
-#define SPI_DATA_RATE 1000000 // 1MHz is the max speed of the MPU-9250
-#define SPI_MODE SPI_MODE3
+#define  WAI_MPU_9255	0x73	//9255's Who_Am_I register is 0x73.
+#define  WAI_AK8963		0x48	//AK8963
 
-class MPU9250
-{
-  protected:
+class MPU9250 {
 
-    public: // temporary
-
+public:
+	// temporary
     // Set initial input parameters
-    enum Ascale
-    {
+	enum Ascale {
       AFS_2G = 0,
       AFS_4G,
       AFS_8G,
@@ -214,44 +206,41 @@ class MPU9250
       M_100HZ = 0x06 // 100 Hz continuous magnetometer
     };
 
-    
-    TwoWire * _wire;						// Allows for use of various I2C ports
-    uint8_t _I2Caddr = MPU9250_ADDRESS_AD0;	// Use AD0 by default
-
- 	SPIClass * _spi;						// Allows for use of different SPI ports
-    int8_t _csPin; 							// SPI chip select pin
-
-    uint32_t _interfaceSpeed;				// Stores the desired I2C or SPi clock rate
-
-    // TODO: Add setter methods for this hard coded stuff
-    // Specify sensor full scale
-    uint8_t Gscale = GFS_250DPS;
-    uint8_t Ascale = AFS_2G;
-    // Choose either 14-bit or 16-bit magnetometer resolution
-    uint8_t Mscale = MFS_16BITS;
-
-    // 2 for 8 Hz, 6 for 100 Hz continuous magnetometer data read
-    uint8_t Mmode = M_8HZ;
-
-    
-    
-
-    uint8_t writeByteWire(uint8_t, uint8_t, uint8_t);
-    uint8_t writeByteSPI(uint8_t, uint8_t);
-    uint8_t writeMagByteSPI(uint8_t subAddress, uint8_t data);
-    uint8_t readByteSPI(uint8_t subAddress);
-    uint8_t readMagByteSPI(uint8_t subAddress);
-    uint8_t readByteWire(uint8_t address, uint8_t subAddress);
-    bool magInit();
-    void kickHardware();
-    void select();
-    void deselect();
-    void setupMagForSPI();
-// TODO: Remove this next line
+    // Public method declarations
 public:
-    uint8_t ak8963WhoAmI_SPI();
+    MPU9250();
+	virtual ~MPU9250(){}
 
-  public:
+	void getMres(void);
+    void getGres(void);
+    void getAres(void);
+    void readAccelData(int16_t *destination);
+    void readGyroData(int16_t *destination);
+    void readMagData(int16_t *destination);
+    int16_t readTempData(void);
+    void updateTime(void);
+    void calibrateMPU9250(float * gyroBias, float * accelBias);
+    void MPU9250SelfTest(float * destination);
+    void magCalMPU9250(float * dest1, float * dest2);
+    void initAK8963(float *destination);
+    void initMPU9250(void);
+
+	uint8_t readIntStatus(void);
+	uint8_t readWhoAmI_AK8963(void);
+	uint8_t readWhoAmI_Mpu9250(void);
+
+	uint8_t _I2Caddr = MPU9250_ADDRESS_AD0;	// Use AD0 by default
+	// TODO: Add setter methods for this hard coded stuff
+	// Specify sensor full scale
+	uint8_t Gscale = GFS_250DPS;
+	uint8_t Ascale = AFS_2G;
+	// Choose either 14-bit or 16-bit magnetometer resolution
+	uint8_t Mscale = MFS_16BITS;
+
+	// 2 for 8 Hz, 6 for 100 Hz continuous magnetometer data read
+	uint8_t Mmode = M_8HZ;
+
+public:
     float pitch, yaw, roll;
     float temperature;   // Stores the real internal chip temperature in Celsius
     int16_t tempCount;   // Temperature raw count output
@@ -279,30 +268,11 @@ public:
     // Stores the 16-bit signed accelerometer sensor output
     int16_t accelCount[3];
 
-    // Public method declarations
-    MPU9250( int8_t csPin, SPIClass &spiInterface = SPI, uint32_t spi_freq = SPI_DATA_RATE);
-    MPU9250( uint8_t address = MPU9250_ADDRESS_AD0, TwoWire &wirePort = Wire, uint32_t clock_frequency = 100000 );
-    void getMres();
-    void getGres();
-    void getAres();
-    void readAccelData(int16_t *);
-    void readGyroData(int16_t *);
-    void readMagData(int16_t *);
-    int16_t readTempData();
-    void updateTime();
-    void initAK8963(float *);
-    void initMPU9250();
-    void calibrateMPU9250(float * gyroBias, float * accelBias);
-    void MPU9250SelfTest(float * destination);
-    void magCalMPU9250(float * dest1, float * dest2);
-    uint8_t writeByte(uint8_t, uint8_t, uint8_t);
-    uint8_t readByte(uint8_t, uint8_t);
-    uint8_t readBytes(uint8_t, uint8_t, uint8_t, uint8_t *);
-    // TODO: make SPI/Wire private
-    uint8_t readBytesSPI(uint8_t, uint8_t, uint8_t *);
-    uint8_t readBytesWire(uint8_t, uint8_t, uint8_t, uint8_t *);
-    bool isInI2cMode() { return _csPin == -1; }
-    bool begin();
-};  // class MPU9250
+protected:
+	virtual uint8_t writeByte(uint8_t deviceAddress, uint8_t registerAddress, uint8_t data) = 0;
+	virtual uint8_t readByte(uint8_t deviceAddress, uint8_t registerAddress) = 0;
+	virtual uint8_t readBytes(uint8_t deviceAddress, uint8_t registerAddress, uint8_t count, uint8_t* dest) = 0;
+};
+		// class MPU9250
 
 #endif // _MPU9250_H_
