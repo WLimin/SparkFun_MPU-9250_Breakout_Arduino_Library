@@ -30,8 +30,6 @@
 
 #include "Arduino.h"
 #include "quaternionFilters.h"
-#include "MPU9250SPI.h"
-//#include <MPU9250TwoWire.h>
 
 #ifdef LCD
 #include <Adafruit_GFX.h>
@@ -55,10 +53,12 @@ int myLed  = LED_BUILTIN;//13;  // Set up pin 13 led for toggling
 #define SPIspeed 1000000
 #define SPIport SPI
 #define CSpin   PA4 //2 The PA4 pin is nss1 of STM32F103C8T6.
-//#define MPU9250_ADDRESS 9001 // Use any old address value because it is not used for SPI, but it is all over this example
 
-MPU9250SPI myIMU(CSpin, SPIport, SPIspeed);
-//MPU9250TwoWire myIMU();
+//#include "MPU9250SPI.h"
+//MPU9250SPI myIMU(CSpin, SPIport, SPIspeed);
+
+#include <MPU9250TwoWire.h>
+MPU9250TwoWire myIMU(MPU9250_ADDRESS_AD0, Wire, 400000);
 
 void setup() {
 	Serial.begin(115200);
@@ -222,8 +222,9 @@ void loop() {
 	// along the x-axis just like in the LSM9DS0 sensor. This rotation can be
 	// modified to allow any convenient orientation convention. This is ok by
 	// aircraft orientation standards! Pass gyro rate as rad/s
-	MahonyQuaternionUpdate(myIMU.ax, myIMU.ay, myIMU.az, myIMU.gx * DEG_TO_RAD, myIMU.gy * DEG_TO_RAD,
-			myIMU.gz * DEG_TO_RAD, myIMU.my, myIMU.mx, myIMU.mz, myIMU.deltat);
+	MahonyQuaternionUpdate(myIMU.ax, myIMU.ay, myIMU.az,
+			myIMU.gx * DEG_TO_RAD, myIMU.gy * DEG_TO_RAD, myIMU.gz * DEG_TO_RAD,
+			myIMU.my, myIMU.mx, myIMU.mz, myIMU.deltat);
 
 	if (!AHRS) {
 		myIMU.delt_t = millis() - myIMU.count;
@@ -339,6 +340,14 @@ void loop() {
 				Serial.print(*(getQ() + 2));
 				Serial.print(" qz = ");
 				Serial.println(*(getQ() + 3));
+
+				myIMU.tempCount = myIMU.readTempData();  // Read the adc values
+				// Temperature in degrees Centigrade
+				myIMU.temperature = ((float) myIMU.tempCount) / 333.87 + 21.0;
+				// Print temperature in degrees Centigrade
+				Serial.print("Temperature is ");
+				Serial.print(myIMU.temperature, 1);
+				Serial.println(" degrees C");
 			}
 
 // Define output variables from updated quaternion---these are Tait-Bryan
@@ -357,13 +366,9 @@ void loop() {
 // For more see
 // http://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
 // which has additional links.
-			myIMU.yaw = atan2(2.0f * (*(getQ() + 1) * *(getQ() + 2) + *getQ() * *(getQ() + 3)),
-					*getQ() * *getQ() + *(getQ() + 1) * *(getQ() + 1) - *(getQ() + 2) * *(getQ() + 2)
-							- *(getQ() + 3) * *(getQ() + 3));
+			myIMU.yaw = atan2(2.0f * (*(getQ() + 1) * *(getQ() + 2) + *getQ() * *(getQ() + 3)), *getQ() * *getQ() + *(getQ() + 1) * *(getQ() + 1) - *(getQ() + 2) * *(getQ() + 2) - *(getQ() + 3) * *(getQ() + 3));
 			myIMU.pitch = -asin(2.0f * (*(getQ() + 1) * *(getQ() + 3) - *getQ() * *(getQ() + 2)));
-			myIMU.roll = atan2(2.0f * (*getQ() * *(getQ() + 1) + *(getQ() + 2) * *(getQ() + 3)),
-					*getQ() * *getQ() - *(getQ() + 1) * *(getQ() + 1) - *(getQ() + 2) * *(getQ() + 2)
-							+ *(getQ() + 3) * *(getQ() + 3));
+			myIMU.roll = atan2(2.0f * (*getQ() * *(getQ() + 1) + *(getQ() + 2) * *(getQ() + 3)), *getQ() * *getQ() - *(getQ() + 1) * *(getQ() + 1) - *(getQ() + 2) * *(getQ() + 2) + *(getQ() + 3) * *(getQ() + 3));
 			myIMU.pitch *= RAD_TO_DEG;
 			myIMU.yaw *= RAD_TO_DEG;
 

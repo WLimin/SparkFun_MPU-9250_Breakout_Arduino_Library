@@ -6,6 +6,7 @@
  */
 
 #include <MPU9250TwoWire.h>
+
 MPU9250TwoWire::MPU9250TwoWire(uint8_t address, TwoWire &wirePort, uint32_t clock_frequency) {
 	_I2Caddr = address;
 	_wire = &wirePort;
@@ -74,7 +75,7 @@ uint8_t MPU9250TwoWire::readByte(uint8_t deviceAddress, uint8_t registerAddress)
 uint8_t MPU9250TwoWire::readBytes(uint8_t deviceAddress, uint8_t registerAddress, uint8_t count, uint8_t* dest) {
 	return readBytesWire(deviceAddress, registerAddress, count, dest);
 }
-bool MPU9250TwoWire::begin() {
+bool MPU9250TwoWire::begin(void) {
 	_wire->begin();
 	_wire->setClock(_interfaceSpeed);
 	return true;
